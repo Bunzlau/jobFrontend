@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$USER_HOME$/jobBackend/jobBackend.iml" filepath="$USER_HOME$/jobBackend/jobBackend.iml" />
+      <module fileurl="file://$PROJECT_DIR$/jobFrontend.iml" filepath="$PROJECT_DIR$/jobFrontend.iml" />
+    </modules>
+  </component>
+</project>
