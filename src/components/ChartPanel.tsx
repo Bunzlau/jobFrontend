@@ -20,14 +20,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ArrowDown, ArrowUp, BarChart3, Briefcase, Info, TrendingDown, Users } from "lucide-react";
+import { BarChart3, Briefcase, Info, TrendingDown, Users } from "lucide-react";
 import type {
   EmploymentHistoryResponse,
-  TimeFilter,
   UnemploymentCompareResponse,
 } from "@/types";
-import { TimeFilter as TimeFilterControl } from "@/components/TimeFilter";
 import { StatusFooter } from "@/components/StatusFooter";
+import { VoivodeshipMap } from "@/components/VoivodeshipMap";
+import { useVoivodeships } from "@/hooks/useApi";
 
 // ─── Typy ───
 
@@ -40,8 +40,6 @@ interface ChartPanelProps {
   unemploymentData: UnemploymentCompareResponse | null;
   unemploymentLoading: boolean;
   unemploymentError: string | null;
-  timeFilter: TimeFilter;
-  onTimeFilterChange: (f: TimeFilter) => void;
 }
 
 interface TabDef {
@@ -67,9 +65,9 @@ const tabs: TabDef[] = [
     color: "hsl(217, 91%, 60%)",
     gradientId: "grad_emp",
     unit: "tys. osób",
-    sourceLabel: "GUS BDL · sektor przedsiębiorstw (>9 osób)",
+    sourceLabel: "Przeciętne zatrudnienie w sektorze przedsiębiorstw (≥10 pracujących) · dane miesięczne · GUS",
     tooltip:
-      "Przeciętne zatrudnienie w sektorze przedsiębiorstw zatrudniających powyżej 9 osób. Dane roczne z GUS (Bank Danych Lokalnych).",
+      "Wykres przedstawia przeciętne zatrudnienie w sektorze przedsiębiorstw o liczbie pracujących 10 i więcej osób w Polsce. Obejmuje osoby zatrudnione na podstawie stosunku pracy, w przeliczeniu na pełne etaty. Wartości w tysiącach etatów. Dane miesięczne od 2010 roku. Źródło: Główny Urząd Statystyczny, Bank Danych Lokalnych.",
   },
   {
     key: "eurostat",
@@ -79,21 +77,21 @@ const tabs: TabDef[] = [
     color: "hsl(262, 80%, 60%)",
     gradientId: "grad_euro",
     unit: "%",
-    sourceLabel: "Eurostat · une_rt_m · BAEL/ILO · miesięczne",
+    sourceLabel: "Stopa bezrobocia wg BAEL · sezonowo skorygowana · dane miesięczne · Eurostat",
     tooltip:
-      "Zharmonizowana stopa bezrobocia wg metodologii ILO (Badanie Aktywności Ekonomicznej Ludności). Dane miesięczne, sezonowo skorygowane. Obejmuje osoby 15–74 lat aktywnie poszukujące pracy.",
+      "Wykres przedstawia zharmonizowaną stopę bezrobocia wg metodologii Międzynarodowej Organizacji Pracy (ILO), obliczaną na podstawie Badania Aktywności Ekonomicznej Ludności (BAEL). Obejmuje osoby w wieku 15–74 lat aktywnie poszukujące pracy, niezależnie od rejestracji w urzędzie. Dane miesięczne, sezonowo skorygowane. Źródło: Eurostat.",
   },
   {
     key: "gus",
     label: "Bezrobocie GUS",
-    subtitle: "Rejestrowane · roczne",
+    subtitle: "Rejestrowane · BDL",
     icon: Briefcase,
     color: "hsl(30, 90%, 50%)",
     gradientId: "grad_gus",
     unit: "%",
-    sourceLabel: "GUS BDL · bezrobocie rejestrowane (grudzień) · roczne",
+    sourceLabel: "Stopa bezrobocia rejestrowanego · dane miesięczne od 2015 · GUS BDL",
     tooltip:
-      "Stopa bezrobocia rejestrowanego w Polsce — odsetek osób zarejestrowanych jako bezrobotne w urzędach pracy. Dane roczne z GUS, Bank Danych Lokalnych (stan na grudzień).",
+      "Wykres przedstawia stopę bezrobocia rejestrowanego w Polsce — odsetek osób zarejestrowanych jako bezrobotne w powiatowych urzędach pracy w stosunku do ludności aktywnej zawodowo. Dane miesięczne od 2015 roku z GUS BDL. Źródło: Główny Urząd Statystyczny, Bank Danych Lokalnych.",
   },
 ];
 
@@ -102,12 +100,13 @@ const tabs: TabDef[] = [
 interface ChartPoint {
   label: string;
   value: number;
+  liczba_bezrobotnych?: number;
 }
 
 function buildChartData(
   tab: TabKey,
   empData: EmploymentHistoryResponse | null,
-  unempData: UnemploymentCompareResponse | null
+  unempData: UnemploymentCompareResponse | null,
 ): ChartPoint[] {
   if (tab === "employment") {
     return (
@@ -119,6 +118,7 @@ function buildChartData(
       })) ?? []
     );
   }
+
   const points = tab === "eurostat" ? unempData?.eurostat : unempData?.gus;
   return (
     points?.map((dp) => ({
@@ -126,6 +126,7 @@ function buildChartData(
         ? `${dp.miesiac.toString().padStart(2, "0")}/${dp.rok}`
         : dp.rok.toString(),
       value: dp.wartosc,
+      ...(dp.liczba_bezrobotnych != null ? { liczba_bezrobotnych: dp.liczba_bezrobotnych } : {}),
     })) ?? []
   );
 }
@@ -158,10 +159,11 @@ function ChartTooltip({
   tabDef,
 }: {
   active?: boolean;
-  payload?: Array<{ value: number; payload: { label: string } }>;
+  payload?: Array<{ value: number; payload: ChartPoint }>;
   tabDef: TabDef;
 }) {
   if (!active || !payload?.length) return null;
+  const point = payload[0].payload;
   return (
     <div className="rounded-md bg-white/95 dark:bg-zinc-800/95 backdrop-blur-sm px-2.5 py-1.5 text-xs shadow-md border border-zinc-200/80 dark:border-zinc-600/50">
       <div className="flex items-center gap-1.5">
@@ -174,9 +176,18 @@ function ChartTooltip({
         </span>
         <span className="text-zinc-400 text-[10px]">
           {tabDef.unit !== "%" && "tys. · "}
-          {payload[0].payload.label}
+          {point.label}
         </span>
       </div>
+      {point.liczba_bezrobotnych != null && (
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-amber-400" />
+          <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+            {point.liczba_bezrobotnych.toLocaleString("pl-PL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} tys.
+          </span>
+          <span className="text-zinc-400 text-[10px]">bezrobotnych</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -190,10 +201,9 @@ export function ChartPanel({
   unemploymentData,
   unemploymentLoading,
   unemploymentError,
-  timeFilter,
-  onTimeFilterChange,
 }: ChartPanelProps) {
   const [activeTab, setActiveTab] = useState<TabKey>("employment");
+  const voivodeships = useVoivodeships();
 
   const currentTabDef = tabs.find((t) => t.key === activeTab)!;
 
@@ -203,7 +213,6 @@ export function ChartPanel({
     activeTab === "employment" ? employmentError : unemploymentError;
   const chartData = buildChartData(activeTab, employmentData, unemploymentData);
   const stats = computeStats(chartData);
-  const isHigherBetter = activeTab === "employment";
 
   return (
     <div className="flex w-full min-h-screen">
@@ -291,78 +300,118 @@ export function ChartPanel({
         </div>
       </aside>
 
-      {/* ══════ Główna treść — wykres ══════ */}
-      <main className="flex-1 min-w-0 flex flex-col bg-background">
-        {/* Top bar — tytuł + filtr czasu */}
-        <header className="flex items-center justify-between px-8 py-4 border-b border-zinc-200/60 dark:border-zinc-800">
-          <div className="flex items-center gap-2">
-            <h1 className="text-lg font-semibold text-zinc-800 dark:text-zinc-200">
-              {currentTabDef.label}
-            </h1>
-            <TooltipProvider>
-              <UiTooltip>
-                <TooltipTrigger className="cursor-help">
-                  <Info className="h-3.5 w-3.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors" />
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-xs text-xs leading-relaxed">
-                  {currentTabDef.tooltip}
-                </TooltipContent>
-              </UiTooltip>
-            </TooltipProvider>
-            <span className="text-[11px] text-zinc-400 ml-2">
-              {currentTabDef.sourceLabel}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-4">
-            {/* Statystyki inline — kompaktowe */}
-            {!isLoading && !error && stats && (
-              <div className="flex items-center gap-4 mr-2">
+      {/* ══════ Główna treść ══════ */}
+      <main className="flex-1 min-w-0 flex flex-col bg-zinc-50 dark:bg-zinc-950 overflow-y-auto">
+        {/* ── Top bar ── */}
+        <header className="px-7 py-5">
+          <div className="flex items-center justify-between gap-6">
+            {/* Lewa: tytuł + źródło */}
+            <div className="flex items-center gap-3 min-w-0">
+              <div
+                className="flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0"
+                style={{ backgroundColor: `${currentTabDef.color}12` }}
+              >
+                <currentTabDef.icon className="h-[18px] w-[18px]" style={{ color: currentTabDef.color }} />
+              </div>
+              <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] text-zinc-400 uppercase">Aktualna</span>
-                  <span className="text-sm font-bold" style={{ color: currentTabDef.color }}>
+                  <h1 className="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100 leading-tight truncate">
+                    {currentTabDef.label}
+                  </h1>
+                  <TooltipProvider>
+                    <UiTooltip>
+                      <TooltipTrigger className="cursor-help">
+                        <Info className="h-3.5 w-3.5 text-zinc-300 hover:text-zinc-500 dark:text-zinc-600 dark:hover:text-zinc-400 transition-colors" />
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-xs text-xs leading-relaxed">
+                        {currentTabDef.tooltip}
+                      </TooltipContent>
+                    </UiTooltip>
+                  </TooltipProvider>
+                </div>
+                <p className="text-[11px] text-zinc-400 dark:text-zinc-500 leading-tight mt-0.5 truncate">
+                  {currentTabDef.sourceLabel}
+                </p>
+              </div>
+            </div>
+
+            {/* Prawa: Live badge + metryki */}
+            {!isLoading && !error && stats && (
+              <div className="flex items-center gap-4 flex-shrink-0">
+                {/* LIVE badge */}
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/20">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  </span>
+                  Live
+                </span>
+
+                {/* Separator */}
+                <div className="h-8 w-px bg-zinc-200 dark:bg-zinc-700" />
+
+                {/* Wartość główna */}
+                <div className="text-right">
+                  <p className="text-[10px] font-medium text-zinc-400 dark:text-zinc-500 uppercase tracking-wider leading-none mb-1">
+                    Aktualna
+                  </p>
+                  <p
+                    className="text-lg font-bold tracking-tight leading-none"
+                    style={{ color: currentTabDef.color }}
+                  >
                     {formatVal(stats.current.value, currentTabDef.unit)}
-                  </span>
+                  </p>
                 </div>
-                <div className="flex items-center gap-1">
-                  <ArrowUp className={`h-3 w-3 ${isHigherBetter ? "text-emerald-500" : "text-red-500"}`} />
-                  <span className={`text-xs font-semibold ${isHigherBetter ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
-                    {formatVal(stats.peak.value, currentTabDef.unit)}
-                  </span>
-                  <span className="text-[9px] text-zinc-400">{stats.peak.label}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <ArrowDown className={`h-3 w-3 ${isHigherBetter ? "text-red-500" : "text-emerald-500"}`} />
-                  <span className={`text-xs font-semibold ${isHigherBetter ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}`}>
-                    {formatVal(stats.low.value, currentTabDef.unit)}
-                  </span>
-                  <span className="text-[9px] text-zinc-400">{stats.low.label}</span>
+
+                {/* Liczba bezrobotnych (jeśli dostępna) */}
+                {stats.current.liczba_bezrobotnych != null && (
+                  <>
+                    <div className="h-8 w-px bg-zinc-200 dark:bg-zinc-700" />
+                    <div className="text-right">
+                      <p className="text-[10px] font-medium text-zinc-400 dark:text-zinc-500 uppercase tracking-wider leading-none mb-1">
+                        Bezrobotni
+                      </p>
+                      <p className="text-lg font-bold tracking-tight leading-none text-amber-500 dark:text-amber-400">
+                        {stats.current.liczba_bezrobotnych.toLocaleString("pl-PL", { maximumFractionDigits: 0 })} tys.
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                {/* Separator + data */}
+                <div className="h-8 w-px bg-zinc-200 dark:bg-zinc-700" />
+                <div className="text-right">
+                  <p className="text-[10px] font-medium text-zinc-400 dark:text-zinc-500 uppercase tracking-wider leading-none mb-1">
+                    Okres
+                  </p>
+                  <p className="text-[13px] font-semibold text-zinc-600 dark:text-zinc-300 tracking-tight leading-none">
+                    {stats.current.label}
+                  </p>
                 </div>
               </div>
             )}
-            <TimeFilterControl value={timeFilter} onChange={onTimeFilterChange} />
           </div>
         </header>
 
-        {/* Wykres — cała pozostała przestrzeń */}
-        <div className="flex-1 flex items-center justify-center p-6">
-          {isLoading ? (
-            <Skeleton className="w-full h-full rounded-lg max-h-[500px]" />
-          ) : error ? (
-            <div className="flex flex-col items-center justify-center text-muted-foreground">
-              <TrendingDown className="h-12 w-12 mb-3 opacity-20" />
-              <p className="text-sm">Nie udało się załadować danych</p>
-            </div>
-          ) : chartData.length === 0 ? (
-            <div className="text-muted-foreground text-sm">
-              Brak danych do wyświetlenia
-            </div>
-          ) : (
-            <div className="w-full h-full max-h-[600px] min-h-[400px]">
+        {/* ── Karta wykresu ── */}
+        <div className={`flex flex-col mx-5 ${activeTab === "gus" ? "mb-4" : "mb-5"} rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/70 dark:border-zinc-800 shadow-sm overflow-hidden`}>
+          <div className={`${activeTab === "gus" ? "h-[400px]" : "h-[calc(100vh-180px)] min-h-[400px]"} px-4 pt-5 pb-5`}>
+            {isLoading ? (
+              <Skeleton className="w-full h-full rounded-lg" />
+            ) : error ? (
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                <TrendingDown className="h-12 w-12 mb-3 opacity-20" />
+                <p className="text-sm">Nie udało się załadować danych</p>
+              </div>
+            ) : chartData.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                Brak danych do wyświetlenia
+              </div>
+            ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
                   data={chartData}
-                  margin={{ top: 10, right: 20, bottom: 10, left: 0 }}
+                  margin={{ top: 8, right: 16, bottom: 4, left: -4 }}
                 >
                   <defs>
                     <linearGradient
@@ -375,20 +424,31 @@ export function ChartPanel({
                   </defs>
                   <CartesianGrid
                     strokeDasharray="none"
-                    stroke="hsl(0,0%,90%)"
-                    strokeOpacity={0.5}
+                    stroke="hsl(0,0%,92%)"
+                    strokeOpacity={0.6}
                     vertical={false}
                   />
                   <XAxis
                     dataKey="label"
-                    tick={{ fontSize: 11, fill: "hsl(0,0%,55%)" }}
+                    tick={{ fontSize: 11, fill: "hsl(0,0%,58%)" }}
                     tickLine={false}
                     axisLine={false}
                     dy={10}
-                    interval="preserveStartEnd"
+                    tickFormatter={(label: string) => {
+                      // Show only the year part when it's January (01/) or a plain year
+                      if (/^01\/\d{4}$/.test(label)) return label.slice(3);
+                      if (/^\d{4}$/.test(label)) return label;
+                      return "";
+                    }}
+                    interval={0}
+                    ticks={
+                      chartData
+                        .map((d) => d.label)
+                        .filter((l) => /^01\/\d{4}$/.test(l) || /^\d{4}$/.test(l))
+                    }
                   />
                   <YAxis
-                    tick={{ fontSize: 11, fill: "hsl(0,0%,55%)" }}
+                    tick={{ fontSize: 11, fill: "hsl(0,0%,58%)" }}
                     tickLine={false}
                     axisLine={false}
                     tickFormatter={(v: number) =>
@@ -401,7 +461,7 @@ export function ChartPanel({
                   />
                   <Tooltip
                     content={<ChartTooltip tabDef={currentTabDef} />}
-                    cursor={{ stroke: "hsl(0,0%,80%)", strokeDasharray: "4 4" }}
+                    cursor={{ stroke: "hsl(0,0%,82%)", strokeDasharray: "4 4" }}
                   />
                   <Area
                     type="monotone"
@@ -419,12 +479,23 @@ export function ChartPanel({
                   />
                 </AreaChart>
               </ResponsiveContainer>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
+        {/* ── Mapa województw — widoczna tylko w zakładce GUS ── */}
+        {activeTab === "gus" && (
+          <div className="mx-5 mb-5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/70 dark:border-zinc-800 shadow-sm p-5">
+            <VoivodeshipMap
+              data={voivodeships.data}
+              loading={voivodeships.loading}
+              error={voivodeships.error}
+            />
+          </div>
+        )}
+
         {/* Footer */}
-        <div className="px-8 pb-4">
+        <div className="px-6 pb-4">
           <StatusFooter />
         </div>
       </main>

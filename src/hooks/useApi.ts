@@ -8,14 +8,18 @@ import {
   fetchEmploymentCurrent,
   fetchEmploymentHistory,
   fetchGusHistorical,
+  fetchGusMonthly,
   fetchStatus,
   fetchUnemploymentCompare,
   fetchVacanciesCurrent,
+  fetchVoivodeships,
 } from "@/api/client";
 import type {
   EmploymentCurrentResponse,
   EmploymentHistoryResponse,
   GusHistoricalResponse,
+  GusMonthlyResponse,
+  GusVoivodeshipResponse,
   StatusResponse,
   TimeFilter,
   UnemploymentCompareResponse,
@@ -91,5 +95,13 @@ export function useStatus(): UseApiResult<StatusResponse> {
 
 export function useGusHistorical(): UseApiResult<GusHistoricalResponse> {
   return useApi(() => fetchGusHistorical());
+}
+
+export function useGusMonthly(): UseApiResult<GusMonthlyResponse> {
+  return useApi(() => fetchGusMonthly());
+}
+
+export function useVoivodeships(): UseApiResult<GusVoivodeshipResponse> {
+  return useApi(() => fetchVoivodeships());
 }
 

@@ -36,6 +36,7 @@ export interface UnemploymentDataPoint {
   miesiac: number | null;
   wartosc: number;
   jednostka: string;
+  liczba_bezrobotnych: number | null;
 }
 
 export interface UnemploymentCompareResponse {
@@ -108,4 +109,37 @@ export type GusIndicator =
   | "unemployment_rate_registered"
   | "unemployed_persons"
   | "employed_persons";
+
+// ──────────────────────────────────────────────
+// Dane miesięczne GUS z XLSX
+// ──────────────────────────────────────────────
+
+export interface GusMonthlyDataPoint {
+  rok: number;
+  miesiac: number;
+  stopa_bezrobocia: number;
+  liczba_bezrobotnych: number;
+}
+
+export interface GusMonthlyResponse {
+  dane: GusMonthlyDataPoint[];
+  liczba_rekordow: number;
+}
+
+// ──────────────────────────────────────────────
+// Dane wg województw (z XLSX)
+// ──────────────────────────────────────────────
+
+export interface GusVoivodeshipDataPoint {
+  kod: string;
+  nazwa: string;
+  stopa_bezrobocia: number;
+  liczba_bezrobotnych: number;
+}
+
+export interface GusVoivodeshipResponse {
+  rok: number;
+  miesiac: number;
+  wojewodztwa: GusVoivodeshipDataPoint[];
+}
 

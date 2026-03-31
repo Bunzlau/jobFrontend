@@ -7,6 +7,8 @@ import type {
   EmploymentCurrentResponse,
   EmploymentHistoryResponse,
   GusHistoricalResponse,
+  GusMonthlyResponse,
+  GusVoivodeshipResponse,
   StatusResponse,
   TimeFilter,
   UnemploymentCompareResponse,
@@ -115,6 +117,20 @@ export async function fetchGusHistorical(
     "/api/gus/historical",
     { params }
   );
+  return data;
+}
+
+// ──────────────────────────────────────────────
+// Dane miesięczne GUS (z XLSX)
+// ──────────────────────────────────────────────
+
+export async function fetchGusMonthly(): Promise<GusMonthlyResponse> {
+  const { data } = await api.get<GusMonthlyResponse>("/api/gus/monthly");
+  return data;
+}
+
+export async function fetchVoivodeships(): Promise<GusVoivodeshipResponse> {
+  const { data } = await api.get<GusVoivodeshipResponse>("/api/gus/monthly/voivodeships");
   return data;
 }
 

@@ -25,12 +25,12 @@ export function StatusFooter() {
   const { data, loading } = useStatus();
 
   return (
-    <footer className="mt-10 pt-6 border-t">
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
+    <footer className="pt-4 border-t border-zinc-200/60 dark:border-zinc-800">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
         {/* Status sync */}
         <div className="flex items-center gap-1.5">
           {loading ? (
-            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+            <RefreshCw className="h-3.5 w-3.5" style={{ animation: "spin 1s linear infinite" }} />
           ) : (
             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
           )}
@@ -42,12 +42,15 @@ export function StatusFooter() {
         {/* Ilość rekordów */}
         {data && (
           <>
+            <div className="h-3 w-px bg-zinc-200 dark:bg-zinc-700" />
             <div className="flex items-center gap-1.5">
               <Database className="h-3.5 w-3.5" />
               <span>
                 {data.liczba_rekordow_zatrudnienie + data.liczba_rekordow_bezrobocie + data.liczba_rekordow_wakaty} rekordów
               </span>
             </div>
+
+            <div className="h-3 w-px bg-zinc-200 dark:bg-zinc-700" />
 
             <div className="flex items-center gap-1.5">
               <Clock className="h-3.5 w-3.5" />
@@ -66,4 +69,3 @@ export function StatusFooter() {
     </footer>
   );
 }
-
