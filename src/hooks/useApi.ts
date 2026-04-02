@@ -5,25 +5,37 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  fetchConstructionHistory,
+  fetchDemographicsVoivodeships,
   fetchEmploymentCurrent,
   fetchEmploymentHistory,
   fetchGusHistorical,
   fetchGusMonthly,
+  fetchInflationHistory,
+  fetchProfitabilityHistory,
+  fetchRealWages,
   fetchStatus,
   fetchUnemploymentCompare,
   fetchVacanciesCurrent,
   fetchVoivodeships,
+  fetchWagesHistory,
 } from "@/api/client";
 import type {
+  ConstructionHistoryResponse,
+  DemographicsVoivResponse,
   EmploymentCurrentResponse,
   EmploymentHistoryResponse,
   GusHistoricalResponse,
   GusMonthlyResponse,
   GusVoivodeshipResponse,
+  InflationHistoryResponse,
+  ProfitabilityHistoryResponse,
+  RealWagesResponse,
   StatusResponse,
   TimeFilter,
   UnemploymentCompareResponse,
   VacancyCurrentResponse,
+  WageHistoryResponse,
 } from "@/types";
 
 // ──────────────────────────────────────────────
@@ -103,5 +115,39 @@ export function useGusMonthly(): UseApiResult<GusMonthlyResponse> {
 
 export function useVoivodeships(): UseApiResult<GusVoivodeshipResponse> {
   return useApi(() => fetchVoivodeships());
+}
+
+export function useWagesHistory(
+  filter: TimeFilter
+): UseApiResult<WageHistoryResponse> {
+  return useApi(() => fetchWagesHistory(filter), [filter]);
+}
+
+export function useRealWages(
+  filter: TimeFilter
+): UseApiResult<RealWagesResponse> {
+  return useApi(() => fetchRealWages(filter), [filter]);
+}
+
+export function useInflationHistory(
+  filter: TimeFilter
+): UseApiResult<InflationHistoryResponse> {
+  return useApi(() => fetchInflationHistory(filter), [filter]);
+}
+
+export function useConstructionHistory(
+  filter: TimeFilter
+): UseApiResult<ConstructionHistoryResponse> {
+  return useApi(() => fetchConstructionHistory(filter), [filter]);
+}
+
+export function useProfitabilityHistory(
+  filter: TimeFilter
+): UseApiResult<ProfitabilityHistoryResponse> {
+  return useApi(() => fetchProfitabilityHistory(filter), [filter]);
+}
+
+export function useDemographicsVoivodeships(): UseApiResult<DemographicsVoivResponse> {
+  return useApi(() => fetchDemographicsVoivodeships());
 }
 

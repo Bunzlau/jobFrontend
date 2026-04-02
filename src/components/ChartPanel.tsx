@@ -20,10 +20,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { BarChart3, Briefcase, Info, TrendingDown, Users } from "lucide-react";
+import { BarChart3, Briefcase, Building2, DollarSign, Factory, Info, PieChart, TrendingDown, Users } from "lucide-react";
 import type {
+  ConstructionHistoryResponse,
   EmploymentHistoryResponse,
+  InflationHistoryResponse,
+  ProfitabilityHistoryResponse,
   UnemploymentCompareResponse,
+  WageHistoryResponse,
 } from "@/types";
 import { StatusFooter } from "@/components/StatusFooter";
 import { VoivodeshipMap } from "@/components/VoivodeshipMap";
@@ -31,7 +35,7 @@ import { useVoivodeships } from "@/hooks/useApi";
 
 // ─── Typy ───
 
-type TabKey = "employment" | "eurostat" | "gus";
+type TabKey = "employment" | "eurostat" | "gus" | "wages" | "inflation" | "construction" | "profitability";
 
 interface ChartPanelProps {
   employmentData: EmploymentHistoryResponse | null;
@@ -40,6 +44,18 @@ interface ChartPanelProps {
   unemploymentData: UnemploymentCompareResponse | null;
   unemploymentLoading: boolean;
   unemploymentError: string | null;
+  wagesData: WageHistoryResponse | null;
+  wagesLoading: boolean;
+  wagesError: string | null;
+  inflationData: InflationHistoryResponse | null;
+  inflationLoading: boolean;
+  inflationError: string | null;
+  constructionData: ConstructionHistoryResponse | null;
+  constructionLoading: boolean;
+  constructionError: string | null;
+  profitabilityData: ProfitabilityHistoryResponse | null;
+  profitabilityLoading: boolean;
+  profitabilityError: string | null;
 }
 
 interface TabDef {
@@ -93,6 +109,54 @@ const tabs: TabDef[] = [
     tooltip:
       "Wykres przedstawia stopę bezrobocia rejestrowanego w Polsce — odsetek osób zarejestrowanych jako bezrobotne w powiatowych urzędach pracy w stosunku do ludności aktywnej zawodowo. Dane miesięczne od 2015 roku z GUS BDL. Źródło: Główny Urząd Statystyczny, Bank Danych Lokalnych.",
   },
+  {
+    key: "wages",
+    label: "Wynagrodzenia",
+    subtitle: "Sektor przedsiębiorstw",
+    icon: DollarSign,
+    color: "hsl(142, 72%, 42%)",
+    gradientId: "grad_wages",
+    unit: "PLN",
+    sourceLabel: "Przeciętne wynagrodzenie w sektorze przedsiębiorstw · dane miesięczne · GUS BDL",
+    tooltip:
+      "Wykres przedstawia przeciętne miesięczne wynagrodzenie brutto w sektorze przedsiębiorstw o liczbie pracujących 10 i więcej osób. Wartości w PLN. Źródło: Główny Urząd Statystyczny, Bank Danych Lokalnych.",
+  },
+  {
+    key: "inflation",
+    label: "Inflacja CPI",
+    subtitle: "Wskaźnik cen · GUS",
+    icon: PieChart,
+    color: "hsl(0, 80%, 55%)",
+    gradientId: "grad_infl",
+    unit: "indeks",
+    sourceLabel: "Wskaźnik cen towarów i usług konsumpcyjnych (CPI) · analogiczny miesiąc rok wcześniej = 100 · GUS BDL",
+    tooltip:
+      "Wykres przedstawia wskaźnik CPI — zmianę poziomu cen towarów i usług konsumpcyjnych w stosunku do analogicznego miesiąca roku poprzedniego. Wartość 100 = brak zmian, >100 = wzrost cen, <100 = spadek cen. Źródło: Główny Urząd Statystyczny.",
+  },
+  {
+    key: "construction",
+    label: "Budownictwo",
+    subtitle: "Mieszkania oddane · GUS",
+    icon: Building2,
+    color: "hsl(190, 70%, 45%)",
+    gradientId: "grad_constr",
+    unit: "szt.",
+    sourceLabel: "Mieszkania oddane do użytkowania ogółem · dane roczne · GUS BDL",
+    tooltip:
+      "Wykres przedstawia liczbę mieszkań oddanych do użytkowania w danym roku w Polsce. Dane roczne z GUS BDL. Źródło: Główny Urząd Statystyczny, Bank Danych Lokalnych.",
+  },
+  {
+    key: "profitability",
+    label: "Rentowność",
+    subtitle: "Obrót netto · GUS",
+    icon: Factory,
+    color: "hsl(45, 85%, 50%)",
+    gradientId: "grad_profit",
+    unit: "%",
+    sourceLabel: "Wskaźnik rentowności obrotu netto przedsiębiorstw · dane kwartalne · GUS BDL",
+    tooltip:
+      "Wykres przedstawia wskaźnik rentowności obrotu netto przedsiębiorstw w Polsce. Wartość w %. Dane kwartalne z GUS BDL. Źródło: Główny Urząd Statystyczny, Bank Danych Lokalnych.",
+  },
 ];
 
 // ─── Helpers ───
@@ -107,6 +171,10 @@ function buildChartData(
   tab: TabKey,
   empData: EmploymentHistoryResponse | null,
   unempData: UnemploymentCompareResponse | null,
+  wagesData?: WageHistoryResponse | null,
+  inflationData?: InflationHistoryResponse | null,
+  constructionData?: ConstructionHistoryResponse | null,
+  profitabilityData?: ProfitabilityHistoryResponse | null,
 ): ChartPoint[] {
   if (tab === "employment") {
     return (
@@ -119,16 +187,66 @@ function buildChartData(
     );
   }
 
-  const points = tab === "eurostat" ? unempData?.eurostat : unempData?.gus;
-  return (
-    points?.map((dp) => ({
-      label: dp.miesiac
-        ? `${dp.miesiac.toString().padStart(2, "0")}/${dp.rok}`
-        : dp.rok.toString(),
-      value: dp.wartosc,
-      ...(dp.liczba_bezrobotnych != null ? { liczba_bezrobotnych: dp.liczba_bezrobotnych } : {}),
-    })) ?? []
-  );
+  if (tab === "eurostat" || tab === "gus") {
+    const points = tab === "eurostat" ? unempData?.eurostat : unempData?.gus;
+    return (
+      points?.map((dp) => ({
+        label: dp.miesiac
+          ? `${dp.miesiac.toString().padStart(2, "0")}/${dp.rok}`
+          : dp.rok.toString(),
+        value: dp.wartosc,
+        ...(dp.liczba_bezrobotnych != null ? { liczba_bezrobotnych: dp.liczba_bezrobotnych } : {}),
+      })) ?? []
+    );
+  }
+
+  if (tab === "wages") {
+    return (
+      wagesData?.dane.map((d) => ({
+        label: d.miesiac
+          ? `${d.miesiac.toString().padStart(2, "0")}/${d.rok}`
+          : d.rok.toString(),
+        value: d.wartosc,
+      })) ?? []
+    );
+  }
+
+  if (tab === "inflation") {
+    return (
+      inflationData?.dane.map((d) => ({
+        label: d.miesiac
+          ? `${d.miesiac.toString().padStart(2, "0")}/${d.rok}`
+          : d.rok.toString(),
+        value: d.cpi,
+      })) ?? []
+    );
+  }
+
+  if (tab === "construction") {
+    return (
+      constructionData?.dane
+        .filter((d) => d.rozpoczete != null)
+        .map((d) => ({
+          label: d.miesiac
+            ? `${d.miesiac.toString().padStart(2, "0")}/${d.rok}`
+            : d.rok.toString(),
+          value: d.rozpoczete ?? 0,
+        })) ?? []
+    );
+  }
+
+  if (tab === "profitability") {
+    return (
+      profitabilityData?.dane.map((d) => ({
+        label: d.kwartal
+          ? `Q${d.kwartal}/${d.rok}`
+          : d.rok.toString(),
+        value: d.wartosc,
+      })) ?? []
+    );
+  }
+
+  return [];
 }
 
 function computeStats(points: ChartPoint[]) {
@@ -145,6 +263,9 @@ function computeStats(points: ChartPoint[]) {
 
 function formatVal(v: number, unit: string): string {
   if (unit === "%") return `${v.toFixed(1)}%`;
+  if (unit === "PLN") return `${v.toLocaleString("pl-PL", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} zł`;
+  if (unit === "indeks") return v.toFixed(1);
+  if (unit === "szt.") return v.toLocaleString("pl-PL", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   return v.toLocaleString("pl-PL", {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
@@ -175,7 +296,7 @@ function ChartTooltip({
           {formatVal(payload[0].value, tabDef.unit)}
         </span>
         <span className="text-zinc-400 text-[10px]">
-          {tabDef.unit !== "%" && "tys. · "}
+          {tabDef.unit === "tys. osób" && "tys. · "}
           {point.label}
         </span>
       </div>
@@ -201,17 +322,49 @@ export function ChartPanel({
   unemploymentData,
   unemploymentLoading,
   unemploymentError,
+  wagesData,
+  wagesLoading,
+  wagesError,
+  inflationData,
+  inflationLoading,
+  inflationError,
+  constructionData,
+  constructionLoading,
+  constructionError,
+  profitabilityData,
+  profitabilityLoading,
+  profitabilityError,
 }: ChartPanelProps) {
   const [activeTab, setActiveTab] = useState<TabKey>("employment");
   const voivodeships = useVoivodeships();
 
   const currentTabDef = tabs.find((t) => t.key === activeTab)!;
 
-  const isLoading =
-    activeTab === "employment" ? employmentLoading : unemploymentLoading;
-  const error =
-    activeTab === "employment" ? employmentError : unemploymentError;
-  const chartData = buildChartData(activeTab, employmentData, unemploymentData);
+  const loadingMap: Record<TabKey, boolean> = {
+    employment: employmentLoading,
+    eurostat: unemploymentLoading,
+    gus: unemploymentLoading,
+    wages: wagesLoading,
+    inflation: inflationLoading,
+    construction: constructionLoading,
+    profitability: profitabilityLoading,
+  };
+  const errorMap: Record<TabKey, string | null> = {
+    employment: employmentError,
+    eurostat: unemploymentError,
+    gus: unemploymentError,
+    wages: wagesError,
+    inflation: inflationError,
+    construction: constructionError,
+    profitability: profitabilityError,
+  };
+
+  const isLoading = loadingMap[activeTab];
+  const error = errorMap[activeTab];
+  const chartData = buildChartData(
+    activeTab, employmentData, unemploymentData,
+    wagesData, inflationData, constructionData, profitabilityData,
+  );
   const stats = computeStats(chartData);
 
   return (
@@ -225,20 +378,23 @@ export function ChartPanel({
             <span className="text-[15px] font-bold tracking-tight">Rynek Pracy PL</span>
           </div>
           <p className="text-[10px] text-zinc-500 leading-tight">
-            Monitoring zatrudnienia i bezrobocia
+            Monitoring rynku pracy i gospodarki
           </p>
         </div>
 
         {/* Nawigacja */}
-        <nav className="flex-1 flex flex-col px-2">
+        <nav className="flex-1 flex flex-col px-2 overflow-y-auto">
           <p className="text-[9px] font-semibold text-zinc-600 uppercase tracking-widest px-3 mb-2">
-            Wskaźniki
+            Rynek pracy
           </p>
 
-          {tabs.map((tab) => {
+          {tabs.filter(t => ["employment", "eurostat", "gus"].includes(t.key)).map((tab) => {
             const isActive = activeTab === tab.key;
             const TabIcon = tab.icon;
-            const tabData = buildChartData(tab.key, employmentData, unemploymentData);
+            const tabData = buildChartData(
+              tab.key, employmentData, unemploymentData,
+              wagesData, inflationData, constructionData, profitabilityData,
+            );
             const latest = tabData.length ? tabData[tabData.length - 1] : null;
 
             return (
@@ -253,19 +409,16 @@ export function ChartPanel({
                   }
                 `}
               >
-                {/* Pasek aktywny */}
                 {isActive && (
                   <div
                     className="absolute left-0 top-2.5 bottom-2.5 w-[3px] rounded-r-full"
                     style={{ backgroundColor: tab.color }}
                   />
                 )}
-
                 <TabIcon
                   className="h-4 w-4 flex-shrink-0"
                   style={{ color: isActive ? tab.color : undefined }}
                 />
-
                 <div className="min-w-0 flex-1">
                   <p className="text-[12px] font-medium leading-tight truncate">
                     {tab.label}
@@ -274,8 +427,61 @@ export function ChartPanel({
                     {tab.subtitle}
                   </p>
                 </div>
+                {latest && (
+                  <span
+                    className="text-[11px] font-semibold flex-shrink-0"
+                    style={{ color: isActive ? tab.color : "inherit" }}
+                  >
+                    {formatVal(latest.value, tab.unit)}
+                  </span>
+                )}
+              </button>
+            );
+          })}
 
-                {/* Aktualna wartość */}
+          <p className="text-[9px] font-semibold text-zinc-600 uppercase tracking-widest px-3 mt-4 mb-2">
+            Gospodarka
+          </p>
+
+          {tabs.filter(t => ["wages", "inflation", "construction", "profitability"].includes(t.key)).map((tab) => {
+            const isActive = activeTab === tab.key;
+            const TabIcon = tab.icon;
+            const tabData = buildChartData(
+              tab.key, employmentData, unemploymentData,
+              wagesData, inflationData, constructionData, profitabilityData,
+            );
+            const latest = tabData.length ? tabData[tabData.length - 1] : null;
+
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`
+                  relative flex items-center gap-3 w-full text-left px-3 py-3 rounded-lg mb-0.5 transition-all duration-150
+                  ${isActive
+                    ? "bg-zinc-800 text-white"
+                    : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
+                  }
+                `}
+              >
+                {isActive && (
+                  <div
+                    className="absolute left-0 top-2.5 bottom-2.5 w-[3px] rounded-r-full"
+                    style={{ backgroundColor: tab.color }}
+                  />
+                )}
+                <TabIcon
+                  className="h-4 w-4 flex-shrink-0"
+                  style={{ color: isActive ? tab.color : undefined }}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[12px] font-medium leading-tight truncate">
+                    {tab.label}
+                  </p>
+                  <p className="text-[10px] text-zinc-500 leading-tight truncate">
+                    {tab.subtitle}
+                  </p>
+                </div>
                 {latest && (
                   <span
                     className="text-[11px] font-semibold flex-shrink-0"
@@ -435,27 +641,35 @@ export function ChartPanel({
                     axisLine={false}
                     dy={10}
                     tickFormatter={(label: string) => {
-                      // Show only the year part when it's January (01/) or a plain year
                       if (/^01\/\d{4}$/.test(label)) return label.slice(3);
+                      if (/^Q1\/\d{4}$/.test(label)) return label.slice(3);
                       if (/^\d{4}$/.test(label)) return label;
+                      if (/^Q\d\/\d{4}$/.test(label)) return label;
                       return "";
                     }}
                     interval={0}
                     ticks={
                       chartData
                         .map((d) => d.label)
-                        .filter((l) => /^01\/\d{4}$/.test(l) || /^\d{4}$/.test(l))
+                        .filter((l) =>
+                          /^01\/\d{4}$/.test(l) ||
+                          /^\d{4}$/.test(l) ||
+                          /^Q\d\/\d{4}$/.test(l)
+                        )
                     }
                   />
                   <YAxis
                     tick={{ fontSize: 11, fill: "hsl(0,0%,58%)" }}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(v: number) =>
-                      currentTabDef.unit === "%"
-                        ? `${v}%`
-                        : `${(v / 1000).toFixed(1)}k`
-                    }
+                    tickFormatter={(v: number) => {
+                      const u = currentTabDef.unit;
+                      if (u === "%") return `${v}%`;
+                      if (u === "PLN") return `${(v / 1000).toFixed(1)}k`;
+                      if (u === "indeks") return v.toFixed(1);
+                      if (u === "szt.") return v >= 1000 ? `${(v / 1000).toFixed(0)}k` : `${v}`;
+                      return `${(v / 1000).toFixed(1)}k`;
+                    }}
                     domain={["auto", "auto"]}
                     dx={-5}
                   />

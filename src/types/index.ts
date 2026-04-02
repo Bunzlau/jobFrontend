@@ -143,3 +143,105 @@ export interface GusVoivodeshipResponse {
   wojewodztwa: GusVoivodeshipDataPoint[];
 }
 
+// ──────────────────────────────────────────────
+// Wynagrodzenia
+// ──────────────────────────────────────────────
+
+export interface WageDataPoint {
+  rok: number;
+  miesiac: number | null;
+  wartosc: number;
+  jednostka: string;
+  is_estimate: boolean;
+}
+
+export interface WageHistoryResponse {
+  dane: WageDataPoint[];
+  liczba_rekordow: number;
+}
+
+// ──────────────────────────────────────────────
+// Nożyce realnych płac
+// ──────────────────────────────────────────────
+
+export interface RealWagesDataPoint {
+  rok: number;
+  miesiac: number | null;
+  wynagrodzenie: number | null;
+  cpi: number | null;
+  roznica_realna: number | null;
+  is_estimate: boolean;
+}
+
+export interface RealWagesResponse {
+  dane: RealWagesDataPoint[];
+  liczba_rekordow: number;
+}
+
+// ──────────────────────────────────────────────
+// Inflacja (CPI)
+// ──────────────────────────────────────────────
+
+export interface InflationDataPoint {
+  rok: number;
+  miesiac: number | null;
+  cpi: number;
+  is_estimate: boolean;
+}
+
+export interface InflationHistoryResponse {
+  dane: InflationDataPoint[];
+  liczba_rekordow: number;
+}
+
+// ──────────────────────────────────────────────
+// Budownictwo
+// ──────────────────────────────────────────────
+
+export interface ConstructionDataPoint {
+  rok: number;
+  miesiac: number | null;
+  pozwolenia: number | null;
+  rozpoczete: number | null;
+  is_estimate: boolean;
+}
+
+export interface ConstructionHistoryResponse {
+  dane: ConstructionDataPoint[];
+  liczba_rekordow: number;
+}
+
+// ──────────────────────────────────────────────
+// Rentowność firm
+// ──────────────────────────────────────────────
+
+export interface ProfitabilityDataPoint {
+  rok: number;
+  kwartal: number | null;
+  wartosc: number;
+  jednostka: string;
+  is_estimate: boolean;
+}
+
+export interface ProfitabilityHistoryResponse {
+  dane: ProfitabilityDataPoint[];
+  liczba_rekordow: number;
+}
+
+// ──────────────────────────────────────────────
+// Demografia wg województw
+// ──────────────────────────────────────────────
+
+export interface DemographicsVoivDataPoint {
+  kod: string;
+  nazwa: string;
+  wiek_produkcyjny: number | null;
+  wiek_poprodukcyjny: number | null;
+  indeks_starzenia: number | null;
+}
+
+export interface DemographicsVoivResponse {
+  rok: number;
+  wojewodztwa: DemographicsVoivDataPoint[];
+}
+

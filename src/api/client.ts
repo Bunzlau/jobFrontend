@@ -4,15 +4,21 @@
 
 import axios from "axios";
 import type {
+  ConstructionHistoryResponse,
+  DemographicsVoivResponse,
   EmploymentCurrentResponse,
   EmploymentHistoryResponse,
   GusHistoricalResponse,
   GusMonthlyResponse,
   GusVoivodeshipResponse,
+  InflationHistoryResponse,
+  ProfitabilityHistoryResponse,
+  RealWagesResponse,
   StatusResponse,
   TimeFilter,
   UnemploymentCompareResponse,
   VacancyCurrentResponse,
+  WageHistoryResponse,
 } from "@/types";
 
 // Bazowy URL backendu
@@ -131,6 +137,93 @@ export async function fetchGusMonthly(): Promise<GusMonthlyResponse> {
 
 export async function fetchVoivodeships(): Promise<GusVoivodeshipResponse> {
   const { data } = await api.get<GusVoivodeshipResponse>("/api/gus/monthly/voivodeships");
+  return data;
+}
+
+// ──────────────────────────────────────────────
+// Wynagrodzenia
+// ──────────────────────────────────────────────
+
+export async function fetchWagesHistory(
+  filter: TimeFilter = "3y"
+): Promise<WageHistoryResponse> {
+  const params = timeFilterToParams(filter);
+  const { data } = await api.get<WageHistoryResponse>(
+    "/api/wages/history",
+    { params }
+  );
+  return data;
+}
+
+export async function fetchRealWages(
+  filter: TimeFilter = "3y"
+): Promise<RealWagesResponse> {
+  const params = timeFilterToParams(filter);
+  const { data } = await api.get<RealWagesResponse>(
+    "/api/wages/real-wages",
+    { params }
+  );
+  return data;
+}
+
+// ──────────────────────────────────────────────
+// Inflacja
+// ──────────────────────────────────────────────
+
+export async function fetchInflationHistory(
+  filter: TimeFilter = "3y"
+): Promise<InflationHistoryResponse> {
+  const params = timeFilterToParams(filter);
+  const { data } = await api.get<InflationHistoryResponse>(
+    "/api/inflation/history",
+    { params }
+  );
+  return data;
+}
+
+// ──────────────────────────────────────────────
+// Budownictwo
+// ──────────────────────────────────────────────
+
+export async function fetchConstructionHistory(
+  filter: TimeFilter = "3y"
+): Promise<ConstructionHistoryResponse> {
+  const params = timeFilterToParams(filter);
+  const { data } = await api.get<ConstructionHistoryResponse>(
+    "/api/construction/history",
+    { params }
+  );
+  return data;
+}
+
+// ──────────────────────────────────────────────
+// Rentowność
+// ──────────────────────────────────────────────
+
+export async function fetchProfitabilityHistory(
+  filter: TimeFilter = "3y"
+): Promise<ProfitabilityHistoryResponse> {
+  const params = timeFilterToParams(filter);
+  const { data } = await api.get<ProfitabilityHistoryResponse>(
+    "/api/profitability/history",
+    { params }
+  );
+  return data;
+}
+
+// ──────────────────────────────────────────────
+// Demografia
+// ──────────────────────────────────────────────
+
+export async function fetchDemographicsVoivodeships(
+  year?: number
+): Promise<DemographicsVoivResponse> {
+  const params: Record<string, number> = {};
+  if (year) params.year = year;
+  const { data } = await api.get<DemographicsVoivResponse>(
+    "/api/demographics/voivodeships",
+    { params }
+  );
   return data;
 }
 
